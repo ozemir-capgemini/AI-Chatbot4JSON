@@ -1,0 +1,17 @@
+make a working ai bot
+step 1 - what domain is it, whether its sales, inventory, or account and then ask for confirmation
+step 2- do you wanna make changes to the general prompt, and get confirmation
+step 3- ask for table, and then it should be new table or edit table and the description --> DDL + some info (context), confirm the generated description is good and then add to table description
+step 4- which sub-domain is the target or needs to be changed, and get confirmation
+step 5- what sub-domain level prompt changes, if there are changes then get answer and if not keep moving
+step 6- few shot examples, user gives query and answer, this should be the question and the sql query associated, and at the end again confirm the question and query to make sure it is right and consistent
+the format should be input{Q}-> query{SQL}
+
+final step- json file is the target output
+
+
+
+make sure bot appends changes after confirmation
+confirmation of the changes should happen after each step
+
+this just needs to be S-PA(single page application)
