@@ -1,0 +1,22 @@
+{
+  "domain": "goon",
+  "general_prompt": "f u",
+  "tables": [
+    {
+      "name": "goon_table",
+      "description": "It should contain the gooners name, gooners age, and average goons per day"
+    }
+  ],
+  "sub_domain": "goonlet",
+  "sub_domain_prompt": "I dont even know",
+  "few_shots": [
+    {
+      "question": "what is the average goon per day for gooner waleed",
+      "sql": "SELECT avg_goon_per_day FROM goon_table WHERE gooner_name = \"waleed\""
+    },
+    {
+      "question": "Your question here",
+      "sql": "SELECT ..."
+    }
+  ]
+}

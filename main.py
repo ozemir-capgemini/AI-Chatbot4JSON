@@ -1,34 +1,38 @@
-"""AI Chatbot4JSON – Single-page application entry point.
+"""DMACO – CLI chat entry point.
 
-Walks the user through a guided wizard that builds a text-to-SQL
-configuration and exports it as a JSON file.
+Terminal-based chat interface that mirrors the Streamlit app.
+Run with: python main.py
 """
 
-from bot.state import BotState
-from bot.engine import StepRunner
-from bot.steps import ALL_STEPS
-from bot.utils import ask, confirm, display_section
+from dotenv import load_dotenv
+from bot.state import BotMemory, FSMState
+from bot.engine import process_user_input
 
-OUTPUT_FILE = "output.json"
+load_dotenv()
 
 
 def main() -> None:
-    display_section("AI Chatbot4JSON", "Configure your text-to-SQL bot step by step.\n")
+    memory = BotMemory()
+    state = FSMState.INIT
 
-    # Resume from existing JSON if present
-    state = BotState.load(OUTPUT_FILE)
-    if state.domain:
-        print(f"Found existing config for domain '{state.domain}'.")
-        if not confirm("Resume and overwrite with new answers?"):
-            state = BotState()
+    # Kick off with the INIT greeting
+    reply, state = process_user_input(state, memory, "")
+    print(f"\n🤖  {reply}")
 
-    runner = StepRunner(ALL_STEPS)
-    state = runner.run_all(state)
+    while state != FSMState.COMPLETE:
+        user_input = input("\nYou> ").strip()
+        if not user_input:
+            continue
 
-    # Final save
-    path = state.save(OUTPUT_FILE)
-    display_section("Done!", f"Configuration saved to {path}")
-    print(state.to_dict())
+        reply, state = process_user_input(state, memory, user_input)
+        print(f"\n🤖  {reply}")
+
+        # Auto-trigger final assembly (no user input needed)
+        if state == FSMState.FINAL_ASSEMBLY:
+            reply, state = process_user_input(state, memory, "")
+            print(f"\n🤖  {reply}")
+
+    print("\nSession complete.")
 
 
 if __name__ == "__main__":

@@ -1,61 +1,100 @@
-"""Data model that accumulates across all steps and exports to JSON."""
+"""FSM states, data model, and serialisation — matches DMACO spec exactly."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
+
 import json
+from dataclasses import asdict, dataclass, field
+from enum import IntEnum
 from pathlib import Path
 
 
+# ------------------------------------------------------------------
+# Finite-State Machine — Section 5 of spec
+# ------------------------------------------------------------------
+
+class FSMState(IntEnum):
+    INIT = 0
+    DOMAIN_SELECTION = 1
+    DOMAIN_CONFIRMATION = 2
+    GENERAL_PROMPT_ENTRY = 3
+    GENERAL_PROMPT_CONFIRMATION = 4
+    TABLE_OP = 5
+    TABLE_CONFIRMATION = 6
+    SUBDOMAIN_SELECTION = 7
+    SUBDOMAIN_CONFIRMATION = 8
+    SUBDOMAIN_PROMPT_ENTRY = 9
+    SUBDOMAIN_PROMPT_CONFIRMATION = 10
+    FEWSHOT_ENTRY = 11
+    FEWSHOT_CONFIRMATION = 12
+    FINAL_ASSEMBLY = 13
+    COMPLETE = 14
+
+
+# Only these forward transitions are legal (Section 5)
+ALLOWED_TRANSITIONS: dict[FSMState, FSMState] = {
+    FSMState.INIT:                          FSMState.DOMAIN_SELECTION,
+    FSMState.DOMAIN_SELECTION:              FSMState.DOMAIN_CONFIRMATION,
+    FSMState.DOMAIN_CONFIRMATION:           FSMState.GENERAL_PROMPT_ENTRY,
+    FSMState.GENERAL_PROMPT_ENTRY:          FSMState.GENERAL_PROMPT_CONFIRMATION,
+    FSMState.GENERAL_PROMPT_CONFIRMATION:   FSMState.TABLE_OP,
+    FSMState.TABLE_OP:                      FSMState.TABLE_CONFIRMATION,
+    FSMState.TABLE_CONFIRMATION:            FSMState.SUBDOMAIN_SELECTION,
+    FSMState.SUBDOMAIN_SELECTION:           FSMState.SUBDOMAIN_CONFIRMATION,
+    FSMState.SUBDOMAIN_CONFIRMATION:        FSMState.SUBDOMAIN_PROMPT_ENTRY,
+    FSMState.SUBDOMAIN_PROMPT_ENTRY:        FSMState.SUBDOMAIN_PROMPT_CONFIRMATION,
+    FSMState.SUBDOMAIN_PROMPT_CONFIRMATION: FSMState.FEWSHOT_ENTRY,
+    FSMState.FEWSHOT_ENTRY:                 FSMState.FEWSHOT_CONFIRMATION,
+    FSMState.FEWSHOT_CONFIRMATION:          FSMState.FINAL_ASSEMBLY,
+    FSMState.FINAL_ASSEMBLY:                FSMState.COMPLETE,
+}
+
+
+# ------------------------------------------------------------------
+# Data model — Section 8 JSON schema
+# ------------------------------------------------------------------
+
 @dataclass
-class TableInfo:
+class TableEntry:
     name: str = ""
-    ddl: str = ""
-    context: str = ""
     description: str = ""
 
 
 @dataclass
-class FewShotExample:
-    input: str = ""
-    query: str = ""
+class FewShotEntry:
+    question: str = ""
+    sql: str = ""
 
 
 @dataclass
-class BotState:
-    """Central state that every step reads from / writes to."""
+class BotMemory:
+    """Accumulates confirmed values only.  Matches the spec's JSON schema."""
 
-    domain: str = ""                            # Step 1
-    general_prompt: str = ""                    # Step 2
-    tables: list[TableInfo] = field(default_factory=list)  # Step 3
-    sub_domain: str = ""                        # Step 4
-    sub_domain_prompt: str = ""                 # Step 5
-    few_shot_examples: list[FewShotExample] = field(default_factory=list)  # Step 6
+    domain: str = ""
+    general_prompt: str = ""
+    tables: list[TableEntry] = field(default_factory=list)
+    sub_domain: str = ""
+    sub_domain_prompt: str = ""
+    few_shots: list[FewShotEntry] = field(default_factory=list)
+
+    # Transient working data (not serialised into final JSON)
+    _pending_table: TableEntry | None = field(default=None, repr=False)
+    _pending_few_shot: FewShotEntry | None = field(default=None, repr=False)
+    _table_mode: str = field(default="", repr=False)         # "new" | "edit"
+    _edit_table_idx: int | None = field(default=None, repr=False)
 
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
     def to_dict(self) -> dict:
-        return asdict(self)
+        """Return the spec-compliant JSON structure (no private fields)."""
+        d = asdict(self)
+        for k in list(d):
+            if k.startswith("_"):
+                del d[k]
+        return d
 
     def save(self, path: str | Path = "output.json") -> Path:
         p = Path(path)
         p.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
         return p
-
-    @classmethod
-    def load(cls, path: str | Path = "output.json") -> "BotState":
-        p = Path(path)
-        if not p.exists():
-            return cls()
-        data = json.loads(p.read_text(encoding="utf-8"))
-        state = cls(
-            domain=data.get("domain", ""),
-            general_prompt=data.get("general_prompt", ""),
-            sub_domain=data.get("sub_domain", ""),
-            sub_domain_prompt=data.get("sub_domain_prompt", ""),
-        )
-        for t in data.get("tables", []):
-            state.tables.append(TableInfo(**t))
-        for ex in data.get("few_shot_examples", []):
-            state.few_shot_examples.append(FewShotExample(**ex))
         return state
