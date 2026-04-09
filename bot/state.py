@@ -48,6 +48,16 @@ ALLOWED_TRANSITIONS: dict[FSMState, FSMState] = {
     FSMState.FINAL_ASSEMBLY:                FSMState.COMPLETE,
 }
 
+# Allowed backward transitions on confirmation rejection (Section 5)
+ALLOWED_REJECTIONS: dict[FSMState, FSMState] = {
+    FSMState.DOMAIN_CONFIRMATION:           FSMState.DOMAIN_SELECTION,
+    FSMState.GENERAL_PROMPT_CONFIRMATION:   FSMState.GENERAL_PROMPT_ENTRY,
+    FSMState.TABLE_CONFIRMATION:            FSMState.TABLE_OP,
+    FSMState.SUBDOMAIN_CONFIRMATION:        FSMState.SUBDOMAIN_SELECTION,
+    FSMState.SUBDOMAIN_PROMPT_CONFIRMATION: FSMState.SUBDOMAIN_PROMPT_ENTRY,
+    FSMState.FEWSHOT_CONFIRMATION:          FSMState.FEWSHOT_ENTRY,
+}
+
 
 # ------------------------------------------------------------------
 # Data model — Section 8 JSON schema
@@ -81,6 +91,8 @@ class BotMemory:
     _pending_few_shot: FewShotEntry | None = field(default=None, repr=False)
     _table_mode: str = field(default="", repr=False)         # "new" | "edit"
     _edit_table_idx: int | None = field(default=None, repr=False)
+    _suggested_prompt: str = field(default="", repr=False)
+    _consecutive_retries: int = field(default=0, repr=False)
 
     # ------------------------------------------------------------------
     # Serialisation
@@ -94,7 +106,6 @@ class BotMemory:
         return d
 
     def save(self, path: str | Path = "output.json") -> Path:
-        p = Path(path)
+        p = Path(Path(path).name)  # strip directory components (path-traversal guard)
         p.write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
         return p
-        return state

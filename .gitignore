@@ -11,3 +11,9 @@ wheels/
 
 # Secrets
 .env
+
+# Runtime data
+custom_domains.json
+output.json
+
+

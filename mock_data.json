@@ -1,0 +1,266 @@
+{
+  "sales": {
+    "tables": [
+      {
+        "name": "orders",
+        "ddl": "CREATE TABLE orders (\n  order_id INT PRIMARY KEY,\n  customer_id INT NOT NULL,\n  order_date DATE NOT NULL,\n  total_amount DECIMAL(12,2),\n  status VARCHAR(20) DEFAULT 'pending',\n  region VARCHAR(50),\n  sales_rep_id INT\n);"
+      },
+      {
+        "name": "customers",
+        "ddl": "CREATE TABLE customers (\n  customer_id INT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  email VARCHAR(150),\n  segment VARCHAR(30),\n  signup_date DATE,\n  lifetime_value DECIMAL(12,2)\n);"
+      },
+      {
+        "name": "products",
+        "ddl": "CREATE TABLE products (\n  product_id INT PRIMARY KEY,\n  product_name VARCHAR(150) NOT NULL,\n  category VARCHAR(50),\n  unit_price DECIMAL(10,2),\n  is_active BOOLEAN DEFAULT TRUE\n);"
+      }
+    ],
+    "subdomains": {
+      "order_management": {
+        "few_shots": [
+          {
+            "question": "How many orders are currently pending?",
+            "sql": "SELECT COUNT(*) AS pending_orders FROM orders WHERE status = 'pending';"
+          },
+          {
+            "question": "What is the total pipeline value by region?",
+            "sql": "SELECT region, SUM(total_amount) AS pipeline_value FROM orders WHERE status = 'pending' GROUP BY region ORDER BY pipeline_value DESC;"
+          }
+        ]
+      },
+      "revenue_analysis": {
+        "few_shots": [
+          {
+            "question": "What was the total revenue last month?",
+            "sql": "SELECT SUM(total_amount) AS monthly_revenue FROM orders WHERE order_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') AND order_date < DATE_TRUNC('month', CURRENT_DATE);"
+          },
+          {
+            "question": "Show revenue breakdown by product category.",
+            "sql": "SELECT p.category, SUM(o.total_amount) AS revenue FROM orders o JOIN products p ON o.order_id = p.product_id GROUP BY p.category ORDER BY revenue DESC;"
+          }
+        ]
+      },
+      "customer_segmentation": {
+        "few_shots": [
+          {
+            "question": "How many customers are in each segment?",
+            "sql": "SELECT segment, COUNT(*) AS customer_count FROM customers GROUP BY segment ORDER BY customer_count DESC;"
+          },
+          {
+            "question": "Which segment has the highest average lifetime value?",
+            "sql": "SELECT segment, AVG(lifetime_value) AS avg_ltv FROM customers GROUP BY segment ORDER BY avg_ltv DESC LIMIT 1;"
+          }
+        ]
+      },
+      "lead_tracking": {
+        "few_shots": [
+          {
+            "question": "Who are the top 5 sales reps by total revenue?",
+            "sql": "SELECT sales_rep_id, SUM(total_amount) AS total_revenue FROM orders WHERE status = 'completed' GROUP BY sales_rep_id ORDER BY total_revenue DESC LIMIT 5;"
+          },
+          {
+            "question": "What is the average order value by sales rep?",
+            "sql": "SELECT sales_rep_id, AVG(total_amount) AS avg_order_value FROM orders GROUP BY sales_rep_id ORDER BY avg_order_value DESC;"
+          }
+        ]
+      }
+    }
+  },
+  "finance": {
+    "tables": [
+      {
+        "name": "orders",
+        "ddl": "CREATE TABLE orders (\n  order_id INT PRIMARY KEY,\n  customer_id INT NOT NULL,\n  order_date DATE NOT NULL,\n  total_amount DECIMAL(12,2),\n  status VARCHAR(20) DEFAULT 'pending',\n  region VARCHAR(50),\n  sales_rep_id INT\n);"
+      },
+      {
+        "name": "customers",
+        "ddl": "CREATE TABLE customers (\n  customer_id INT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  email VARCHAR(150),\n  segment VARCHAR(30),\n  signup_date DATE,\n  lifetime_value DECIMAL(12,2)\n);"
+      },
+      {
+        "name": "products",
+        "ddl": "CREATE TABLE products (\n  product_id INT PRIMARY KEY,\n  product_name VARCHAR(150) NOT NULL,\n  category VARCHAR(50),\n  unit_price DECIMAL(10,2),\n  is_active BOOLEAN DEFAULT TRUE\n);"
+      }
+    ],
+    "subdomains": {
+      "accounts_payable": {
+        "few_shots": [
+          {
+            "question": "Which invoices are overdue?",
+            "sql": "SELECT invoice_id, vendor_id, amount, due_date FROM invoices WHERE status = 'open' AND due_date < CURRENT_DATE ORDER BY due_date;"
+          },
+          {
+            "question": "What is the total outstanding payable amount?",
+            "sql": "SELECT SUM(amount) AS total_outstanding FROM invoices WHERE status = 'open';"
+          }
+        ]
+      },
+      "accounts_receivable": {
+        "few_shots": [
+          {
+            "question": "Show the aging report for open invoices.",
+            "sql": "SELECT CASE WHEN CURRENT_DATE - due_date <= 30 THEN '0-30 days' WHEN CURRENT_DATE - due_date <= 60 THEN '31-60 days' ELSE '60+ days' END AS aging_bucket, COUNT(*) AS invoice_count, SUM(amount) AS total_amount FROM invoices WHERE status = 'open' GROUP BY aging_bucket;"
+          },
+          {
+            "question": "Which department has the most open invoices?",
+            "sql": "SELECT department, COUNT(*) AS open_count FROM invoices WHERE status = 'open' GROUP BY department ORDER BY open_count DESC LIMIT 1;"
+          }
+        ]
+      },
+      "budgeting": {
+        "few_shots": [
+          {
+            "question": "Which departments are over budget this year?",
+            "sql": "SELECT department, allocated_amount, spent_amount, (spent_amount - allocated_amount) AS overage FROM budgets WHERE fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE) AND spent_amount > allocated_amount;"
+          },
+          {
+            "question": "What is the total budget utilization by quarter?",
+            "sql": "SELECT quarter, SUM(allocated_amount) AS total_allocated, SUM(spent_amount) AS total_spent, ROUND(SUM(spent_amount) / NULLIF(SUM(allocated_amount), 0) * 100, 1) AS utilization_pct FROM budgets WHERE fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE) GROUP BY quarter ORDER BY quarter;"
+          }
+        ]
+      },
+      "tax_reporting": {
+        "few_shots": [
+          {
+            "question": "What is the total tax liability for this year?",
+            "sql": "SELECT SUM(liability_amount) AS total_liability FROM tax_records WHERE tax_year = EXTRACT(YEAR FROM CURRENT_DATE);"
+          },
+          {
+            "question": "Show unpaid tax obligations by type.",
+            "sql": "SELECT tax_type, SUM(liability_amount - paid_amount) AS unpaid_amount FROM tax_records WHERE (liability_amount - paid_amount) > 0 GROUP BY tax_type ORDER BY unpaid_amount DESC;"
+          }
+        ]
+      }
+    }
+  },
+  "healthcare": {
+    "tables": [
+      {
+        "name": "patients",
+        "ddl": "CREATE TABLE patients (\n  patient_id INT PRIMARY KEY,\n  first_name VARCHAR(50) NOT NULL,\n  last_name VARCHAR(50) NOT NULL,\n  date_of_birth DATE,\n  gender VARCHAR(10),\n  insurance_provider VARCHAR(100),\n  primary_diagnosis VARCHAR(200)\n);"
+      },
+      {
+        "name": "appointments",
+        "ddl": "CREATE TABLE appointments (\n  appointment_id INT PRIMARY KEY,\n  patient_id INT NOT NULL,\n  provider_id INT NOT NULL,\n  appointment_date TIMESTAMP NOT NULL,\n  status VARCHAR(20) DEFAULT 'scheduled',\n  department VARCHAR(50),\n  visit_type VARCHAR(30)\n);"
+      },
+      {
+        "name": "billing_records",
+        "ddl": "CREATE TABLE billing_records (\n  billing_id INT PRIMARY KEY,\n  patient_id INT NOT NULL,\n  appointment_id INT,\n  charge_amount DECIMAL(10,2),\n  insurance_paid DECIMAL(10,2) DEFAULT 0,\n  patient_paid DECIMAL(10,2) DEFAULT 0,\n  billing_code VARCHAR(20),\n  billing_date DATE\n);"
+      }
+    ],
+    "subdomains": {
+      "patient_records": {
+        "few_shots": [
+          {
+            "question": "How many patients are covered by each insurance provider?",
+            "sql": "SELECT insurance_provider, COUNT(*) AS patient_count FROM patients GROUP BY insurance_provider ORDER BY patient_count DESC;"
+          },
+          {
+            "question": "List patients diagnosed with diabetes.",
+            "sql": "SELECT patient_id, first_name, last_name, primary_diagnosis FROM patients WHERE primary_diagnosis LIKE '%diabetes%';"
+          }
+        ]
+      },
+      "appointment_scheduling": {
+        "few_shots": [
+          {
+            "question": "How many appointments are scheduled for today?",
+            "sql": "SELECT COUNT(*) AS today_appointments FROM appointments WHERE CAST(appointment_date AS DATE) = CURRENT_DATE AND status = 'scheduled';"
+          },
+          {
+            "question": "What is the no-show rate by department?",
+            "sql": "SELECT department, COUNT(*) FILTER (WHERE status = 'no_show') * 100.0 / COUNT(*) AS no_show_rate FROM appointments GROUP BY department ORDER BY no_show_rate DESC;"
+          }
+        ]
+      },
+      "billing": {
+        "few_shots": [
+          {
+            "question": "What is the total outstanding patient balance?",
+            "sql": "SELECT SUM(charge_amount - insurance_paid - patient_paid) AS outstanding_balance FROM billing_records WHERE (charge_amount - insurance_paid - patient_paid) > 0;"
+          },
+          {
+            "question": "Show billing totals by billing code.",
+            "sql": "SELECT billing_code, COUNT(*) AS claim_count, SUM(charge_amount) AS total_charges FROM billing_records GROUP BY billing_code ORDER BY total_charges DESC;"
+          }
+        ]
+      },
+      "clinical_analytics": {
+        "few_shots": [
+          {
+            "question": "What are the top 5 most common diagnoses?",
+            "sql": "SELECT primary_diagnosis, COUNT(*) AS patient_count FROM patients WHERE primary_diagnosis IS NOT NULL GROUP BY primary_diagnosis ORDER BY patient_count DESC LIMIT 5;"
+          },
+          {
+            "question": "What is the average number of visits per patient?",
+            "sql": "SELECT AVG(visit_count) AS avg_visits FROM (SELECT patient_id, COUNT(*) AS visit_count FROM appointments WHERE status = 'completed' GROUP BY patient_id) sub;"
+          }
+        ]
+      }
+    }
+  },
+  "telecom": {
+    "tables": [
+      {
+        "name": "subscribers",
+        "ddl": "CREATE TABLE subscribers (\n  subscriber_id INT PRIMARY KEY,\n  phone_number VARCHAR(20) NOT NULL,\n  plan_name VARCHAR(50),\n  activation_date DATE,\n  status VARCHAR(20) DEFAULT 'active',\n  monthly_charge DECIMAL(8,2),\n  data_usage_gb DECIMAL(6,2)\n);"
+      },
+      {
+        "name": "network_events",
+        "ddl": "CREATE TABLE network_events (\n  event_id BIGINT PRIMARY KEY,\n  cell_tower_id INT NOT NULL,\n  event_type VARCHAR(30),\n  event_timestamp TIMESTAMP NOT NULL,\n  duration_seconds INT,\n  severity VARCHAR(10),\n  region VARCHAR(50)\n);"
+      },
+      {
+        "name": "service_tickets",
+        "ddl": "CREATE TABLE service_tickets (\n  ticket_id INT PRIMARY KEY,\n  subscriber_id INT NOT NULL,\n  issue_type VARCHAR(50),\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n  resolved_at TIMESTAMP,\n  priority VARCHAR(10),\n  status VARCHAR(20) DEFAULT 'open'\n);"
+      }
+    ],
+    "subdomains": {
+      "network_monitoring": {
+        "few_shots": [
+          {
+            "question": "How many network outages occurred in the last 7 days?",
+            "sql": "SELECT COUNT(*) AS outage_count FROM network_events WHERE event_type = 'outage' AND event_timestamp >= CURRENT_TIMESTAMP - INTERVAL '7 days';"
+          },
+          {
+            "question": "Which region has the most critical events?",
+            "sql": "SELECT region, COUNT(*) AS critical_events FROM network_events WHERE severity = 'critical' GROUP BY region ORDER BY critical_events DESC LIMIT 1;"
+          }
+        ]
+      },
+      "subscriber_management": {
+        "few_shots": [
+          {
+            "question": "How many subscribers are on each plan?",
+            "sql": "SELECT plan_name, COUNT(*) AS subscriber_count FROM subscribers WHERE status = 'active' GROUP BY plan_name ORDER BY subscriber_count DESC;"
+          },
+          {
+            "question": "What is the churn rate for the last month?",
+            "sql": "SELECT COUNT(*) FILTER (WHERE status = 'cancelled') * 100.0 / COUNT(*) AS churn_rate FROM subscribers WHERE activation_date < DATE_TRUNC('month', CURRENT_DATE);"
+          }
+        ]
+      },
+      "billing": {
+        "few_shots": [
+          {
+            "question": "What is the average monthly charge per plan?",
+            "sql": "SELECT plan_name, AVG(monthly_charge) AS avg_charge FROM subscribers WHERE status = 'active' GROUP BY plan_name ORDER BY avg_charge DESC;"
+          },
+          {
+            "question": "Which subscribers have the highest data usage?",
+            "sql": "SELECT subscriber_id, phone_number, plan_name, data_usage_gb FROM subscribers WHERE status = 'active' ORDER BY data_usage_gb DESC LIMIT 10;"
+          }
+        ]
+      },
+      "service_provisioning": {
+        "few_shots": [
+          {
+            "question": "How many open service tickets are there by priority?",
+            "sql": "SELECT priority, COUNT(*) AS open_tickets FROM service_tickets WHERE status = 'open' GROUP BY priority ORDER BY open_tickets DESC;"
+          },
+          {
+            "question": "What is the average resolution time for tickets?",
+            "sql": "SELECT AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600) AS avg_resolution_hours FROM service_tickets WHERE resolved_at IS NOT NULL;"
+          }
+        ]
+      }
+    }
+  }
+}

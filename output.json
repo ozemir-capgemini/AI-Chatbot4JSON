@@ -1,22 +1,30 @@
 {
-  "domain": "goon",
-  "general_prompt": "f u",
+  "domain": "sales",
+  "general_prompt": "You are an AI assistant specialising in sales analytics. Help users query order data, revenue metrics, customer segments, and sales pipeline information.",
   "tables": [
     {
-      "name": "goon_table",
-      "description": "It should contain the gooners name, gooners age, and average goons per day"
-    }
-  ],
-  "sub_domain": "goonlet",
-  "sub_domain_prompt": "I dont even know",
-  "few_shots": [
-    {
-      "question": "what is the average goon per day for gooner waleed",
-      "sql": "SELECT avg_goon_per_day FROM goon_table WHERE gooner_name = \"waleed\""
+      "name": "orders",
+      "description": "CREATE TABLE orders (\n  order_id INT PRIMARY KEY,\n  customer_id INT NOT NULL,\n  order_date DATE NOT NULL,\n  total_amount DECIMAL(12,2),\n  status VARCHAR(20) DEFAULT 'pending',\n  region VARCHAR(50),\n  sales_rep_id INT\n);"
     },
     {
-      "question": "Your question here",
-      "sql": "SELECT ..."
+      "name": "customers",
+      "description": "CREATE TABLE customers (\n  customer_id INT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  email VARCHAR(150),\n  segment VARCHAR(30),\n  signup_date DATE,\n  lifetime_value DECIMAL(12,2)\n);"
+    },
+    {
+      "name": "products",
+      "description": "CREATE TABLE products (\n  product_id INT PRIMARY KEY,\n  product_name VARCHAR(150) NOT NULL,\n  category VARCHAR(50),\n  unit_price DECIMAL(10,2),\n  is_active BOOLEAN DEFAULT TRUE\n);"
+    }
+  ],
+  "sub_domain": "order_management",
+  "sub_domain_prompt": "Focus on order lifecycle queries: order creation, status tracking, fulfillment, cancellations, and order history analysis.",
+  "few_shots": [
+    {
+      "question": "How many orders are currently pending?",
+      "sql": "SELECT COUNT(*) AS pending_orders FROM orders WHERE status = 'pending';"
+    },
+    {
+      "question": "What is the total pipeline value by region?",
+      "sql": "SELECT region, SUM(total_amount) AS pipeline_value FROM orders WHERE status = 'pending' GROUP BY region ORDER BY pipeline_value DESC;"
     }
   ]
 }
